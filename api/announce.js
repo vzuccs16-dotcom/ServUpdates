@@ -22,15 +22,13 @@ export default async function handler(req, res) {
     live: {
       color: 0x00e676,
       title: "🟢  Stream Starting Soon!",
-      description: `${roleMention}\nI'm going live soon — get ready!
-      https://www.twitch.tv/mrzuchini11, https://www.youtube.com/@MrZ-16`,
+      description: `${roleMention}\nI'm going live soon — get ready! https://www.twitch.tv/mrzuchini11, https://www.youtube.com/@MrZ-16`,
       footer: "See you in chat 👋",
     },
     delayed: {
       color: 0xffb300,
       title: "⏳  Stream Delayed",
-      description: `${roleMention}\nThe stream is running a little late. Hang tight!
-      https://www.twitch.tv/mrzuchini11, https://www.youtube.com/@MrZ-16`,
+      description: `${roleMention}\nThe stream is running a little late. Hang tight!`,
       footer: "Thanks for your patience",
     },
     cancelled: {
