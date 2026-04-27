@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stream Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0b0c0f;
+      --surface: #13151a;
+      --border: #1f2230;
+      --text: #e8eaf0;
+      --muted: #5a5f78;
+      --green: #00e676;
+      --yellow: #ffb300;
+      --red: #ef5350;
+      --purple: #9c6fff;
+      --glow-green: rgba(0,230,118,0.18);
+      --glow-yellow: rgba(255,179,0,0.18);
+      --glow-red: rgba(239,83,80,0.18);
+      --glow-purple: rgba(156,111,255,0.18);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* subtle grid bg */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    .wrap {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    /* ── LOGIN ── */
+    #login-screen {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 48px 40px;
+      text-align: center;
+    }
+
+    #login-screen h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    #login-screen p {
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-bottom: 32px;
+    }
+
+    .pin-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+
+    .pin-dot {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: transparent;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .pin-dot.filled { background: var(--purple); border-color: var(--purple); }
+
+    .pin-pad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      max-width: 220px;
+      margin: 0 auto 20px;
+    }
+
+    .key {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 1.1rem;
+      padding: 16px;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, transform 0.08s;
+      user-select: none;
+    }
+    .key:hover { background: var(--border); border-color: var(--muted); }
+    .key:active { transform: scale(0.94); }
+    .key.wide { grid-column: span 2; }
+    .key.clear { color: var(--red); }
+
+    #pin-error {
+      color: var(--red);
+      font-size: 0.78rem;
+      min-height: 20px;
+      margin-top: -6px;
+    }
+
+    /* ── PANEL ── */
+    #panel { display: none; }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+
+    .panel-header h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .live-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s ease-in-out infinite;
+      display: inline-block;
+      margin-right: 6px;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .logout-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .logout-btn:hover { color: var(--text); border-color: var(--muted); }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .announce-btn {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      padding: 22px 18px;
+      text-align: left;
+      font-family: 'DM Mono', monospace;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+      overflow: hidden;
+    }
+    .announce-btn:hover { transform: translateY(-2px); }
+    .announce-btn:active { transform: scale(0.97); }
+
+    .announce-btn .icon { font-size: 1.5rem; display: block; margin-bottom: 10px; }
+    .announce-btn .label { font-size: 0.78rem; font-weight: 500; display: block; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .announce-btn .name { font-size: 1rem; font-weight: 500; display: block; margin-top: 3px; }
+
+    .announce-btn.green { border-color: rgba(0,230,118,0.3); }
+    .announce-btn.green:hover { background: var(--glow-green); border-color: var(--green); }
+    .announce-btn.green .name { color: var(--green); }
+
+    .announce-btn.yellow { border-color: rgba(255,179,0,0.3); }
+    .announce-btn.yellow:hover { background: var(--glow-yellow); border-color: var(--yellow); }
+    .announce-btn.yellow .name { color: var(--yellow); }
+
+    .announce-btn.red { border-color: rgba(239,83,80,0.3); }
+    .announce-btn.red:hover { background: var(--glow-red); border-color: var(--red); }
+    .announce-btn.red .name { color: var(--red); }
+
+    .announce-btn.purple { border-color: rgba(156,111,255,0.3); grid-column: span 2; }
+    .announce-btn.purple:hover { background: var(--glow-purple); border-color: var(--purple); }
+    .announce-btn.purple .name { color: var(--purple); }
+
+    /* custom message input */
+    .custom-area {
+      display: none;
+      margin-top: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .custom-area.visible { display: block; }
+    .custom-area textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      padding: 12px;
+      resize: vertical;
+      min-height: 90px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .custom-area textarea:focus { border-color: var(--purple); }
+    .custom-area textarea::placeholder { color: var(--muted); }
+    .send-custom {
+      margin-top: 10px;
+      width: 100%;
+      background: var(--purple);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 12px;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .send-custom:hover { opacity: 0.85; }
+    .send-custom:active { transform: scale(0.97); }
+
+    /* toast */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 22px;
+      font-size: 0.82rem;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.success { border-color: var(--green); color: var(--green); }
+    #toast.error { border-color: var(--red); color: var(--red); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- LOGIN -->
+  <div id="login-screen">
+    <h1>Stream Control</h1>
+    <p>Enter your PIN to continue</p>
+    <div class="pin-row" id="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="key" onclick="pressKey('1')">1</button>
+      <button class="key" onclick="pressKey('2')">2</button>
+      <button class="key" onclick="pressKey('3')">3</button>
+      <button class="key" onclick="pressKey('4')">4</button>
+      <button class="key" onclick="pressKey('5')">5</button>
+      <button class="key" onclick="pressKey('6')">6</button>
+      <button class="key" onclick="pressKey('7')">7</button>
+      <button class="key" onclick="pressKey('8')">8</button>
+      <button class="key" onclick="pressKey('9')">9</button>
+      <button class="key clear" onclick="clearPin()">⌫</button>
+      <button class="key" onclick="pressKey('0')">0</button>
+      <button class="key" onclick="submitPin()">↵</button>
+    </div>
+    <div id="pin-error"></div>
+  </div>
+
+  <!-- CONTROL PANEL -->
+  <div id="panel">
+    <div class="panel-header">
+      <h1><span class="live-dot"></span>Stream Control</h1>
+      <button class="logout-btn" onclick="logout()">Lock</button>
+    </div>
+
+    <div class="btn-grid">
+      <button class="announce-btn green" onclick="announce('live')">
+        <span class="icon">🟢</span>
+        <span class="label">Announce</span>
+        <span class="name">Going Live Soon</span>
+      </button>
+      <button class="announce-btn yellow" onclick="announce('delayed')">
+        <span class="icon">⏳</span>
+        <span class="label">Announce</span>
+        <span class="name">Stream Delayed</span>
+      </button>
+      <button class="announce-btn red" onclick="announce('cancelled')">
+        <span class="icon">❌</span>
+        <span class="label">Announce</span>
+        <span class="name">Stream Cancelled</span>
+      </button>
+      <button class="announce-btn purple" onclick="toggleCustom()">
+        <span class="icon">📢</span>
+        <span class="label">Announce</span>
+        <span class="name">Custom Message</span>
+      </button>
+    </div>
+
+    <div class="custom-area" id="custom-area">
+      <textarea id="custom-msg" placeholder="Type your custom announcement..."></textarea>
+      <button class="send-custom" onclick="sendCustom()">Send Custom Announcement</button>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+  let pin = '';
+  let sessionPin = null;
+
+  function updateDots() {
+    for (let i = 0; i < 4; i++) {
+      document.getElementById('d' + i).classList.toggle('filled', i < pin.length);
+    }
+  }
+
+  function pressKey(k) {
+    if (pin.length < 4) { pin += k; updateDots(); }
+    if (pin.length === 4) setTimeout(submitPin, 120);
+  }
+
+  function clearPin() {
+    pin = pin.slice(0, -1);
+    updateDots();
+    document.getElementById('pin-error').textContent = '';
+  }
+
+  async function submitPin() {
+    if (pin.length < 4) return;
+    // test PIN against server
+    try {
+      const res = await fetch('/announce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-pin': pin },
+        body: JSON.stringify({ type: '_ping' })
+      });
+      // 500 (unknown type) = auth passed; 401 = wrong PIN
+      if (res.status === 401) {
+        document.getElementById('pin-error').textContent = 'Wrong PIN. Try again.';
+        pin = ''; updateDots(); return;
+      }
+      sessionPin = pin;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('panel').style.display = 'block';
+    } catch {
+      document.getElementById('pin-error').textContent = 'Could not reach server.';
+      pin = ''; updateDots();
+    }
+  }
+
+  function logout() {
+    sessionPin = null; pin = '';
+    updateDots();
+    document.getElementById('panel').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'block';
+  }
+
+  function toggleCustom() {
+    const el = document.getElementById('custom-area');
+    el.classList.toggle('visible');
+    if (el.classList.contains('visible')) document.getElementById('custom-msg').focus();
+  }
+
+  async function announce(type) {
+    await send(type, null);
+  }
+
+  async function sendCustom() {
+    const msg = document.getElementById('custom-msg').value.trim();
+    if (!msg) { showToast('Please type a message first.', 'error'); return; }
+    await send('custom', msg);
+    document.getElementById('custom-msg').value = '';
+    document.getElementById('custom-area').classList.remove('visible');
+  }
+
+  async function send(type, customMessage) {
+    try {
+      const res = await fetch('/announce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-pin': sessionPin },
+        body: JSON.stringify({ type, customMessage })
+      });
+      const data = await res.json();
+      if (res.ok) showToast('✓ Announcement sent!', 'success');
+      else showToast('Error: ' + data.error, 'error');
+    } catch {
+      showToast('Could not reach server.', 'error');
+    }
+  }
+
+  function showToast(msg, cls) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'show ' + cls;
+    setTimeout(() => { t.className = ''; }, 3000);
+  }
+
+  // allow Enter key on PIN pad
+  document.addEventListener('keydown', e => {
+    if (!sessionPin) {
+      if (e.key >= '0' && e.key <= '9') pressKey(e.key);
+      if (e.key === 'Backspace') clearPin();
+      if (e.key === 'Enter') submitPin();
+    }
+  });
+</script>
+</body>
+</html>
